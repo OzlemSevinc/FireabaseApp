@@ -1,17 +1,24 @@
 package com.sample.firebaseapp.chat.ui
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.View.OnLayoutChangeListener
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.sample.firebaseapp.RequestListener
+import com.sample.firebaseapp.chat.adapter.MessageClickListener
 import com.sample.firebaseapp.chat.adapter.MessageListAdapter
+import com.sample.firebaseapp.chat.viewholder.MessageListReceiverViewHolder
 import com.sample.firebaseapp.databinding.ActivityGroupChatBinding
+import com.sample.firebaseapp.model.MessageModel
+import com.sample.firebaseapp.profile.ProfileActivity
 
-class GroupChatActivity : AppCompatActivity() {
+class GroupChatActivity : AppCompatActivity(), MessageClickListener, MessageDeleteListener, MessageListReceiverViewHolder.OnUserNameClickListener {
 
     private lateinit var binding: ActivityGroupChatBinding
 
@@ -98,7 +105,11 @@ class GroupChatActivity : AppCompatActivity() {
 
         adapter = MessageListAdapter(
             viewModel.getMessageList(),
-            viewModel.getUserId()
+            viewModel.getUserId(),
+            this,
+            this
+
+
         )
         val layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
         binding.messageListRecyclerView.layoutManager = layoutManager
@@ -114,5 +125,38 @@ class GroupChatActivity : AppCompatActivity() {
         )
         return
     }
+    override fun onUserNameClick(userId: String) {
+        val intent = Intent(this, ProfileActivity::class.java).apply {
+            putExtra(ProfileActivity.EXTRA_USER_ID, userId)
+        }
+        startActivity(intent)
+    }
 
-}
+    override fun showDeleteConfirmationDialog(message: MessageModel) {
+        if (message.userId == viewModel.getUserId()) {
+        AlertDialog.Builder(this)
+            .setTitle("Mesajı Sil")
+            .setMessage("Mesajı silmek istiyor musunuz?")
+            .setPositiveButton("Sil") { dialog, _ ->
+                viewModel.deleteMessage(message.messageId!!,message,this)
+                adapter?.removeMessage(message)
+                dialog.dismiss()
+            }
+            .setNegativeButton("İptal") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    }
+
+    override fun onMessageDeletedSuccessfully(message: MessageModel) {
+        adapter?.removeMessage(message)
+        Toast.makeText(this, "Mesaj silindi", Toast.LENGTH_SHORT).show()
+
+    }
+
+    override fun onMessageDeletionFailed(message: MessageModel, error: Exception) {
+
+        Log.d("MessageListAdapter", "Failed to delete message: ${error.message}")}
+    }

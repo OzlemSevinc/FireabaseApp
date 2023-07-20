@@ -1,5 +1,6 @@
 package com.sample.firebaseapp.chat.adapter
 
+
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -9,9 +10,16 @@ import com.sample.firebaseapp.databinding.LayoutMessageReceiverBinding
 import com.sample.firebaseapp.databinding.LayoutMessageSenderBinding
 import com.sample.firebaseapp.model.MessageModel
 
+
+interface MessageClickListener {
+    fun showDeleteConfirmationDialog(message: MessageModel)
+}
+
 class MessageListAdapter(
     private var items: ArrayList<MessageModel>?,
-    private val currentUserId: String?
+    private val currentUserId: String?,
+    private val messageClickListener: MessageClickListener,
+    private val onUserNameClickListener: MessageListReceiverViewHolder.OnUserNameClickListener
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var messageViewType: MessageDetailEnum = MessageDetailEnum.SENDER
@@ -24,7 +32,7 @@ class MessageListAdapter(
                         LayoutInflater.from(parent.context),
                         parent,
                         false
-                    )
+                    ),onUserNameClickListener
                 )
             }
             else -> {
@@ -33,7 +41,7 @@ class MessageListAdapter(
                         LayoutInflater.from(parent.context),
                         parent,
                         false
-                    )
+                    ),onUserNameClickListener
                 )
             }
         }
@@ -47,12 +55,23 @@ class MessageListAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is MessageListReceiverViewHolder) {
             holder.bind(items?.get(position))
+            holder.itemView.setOnLongClickListener(){
+                items?.let { it1 -> messageClickListener.showDeleteConfirmationDialog(it1.get(position)) }
+                true
+
+            }
         }
 
         if (holder is MessageListSenderViewHolder) {
             holder.bind(items?.get(position))
+            holder.itemView.setOnLongClickListener {
+                items?.let { it1 -> messageClickListener.showDeleteConfirmationDialog(it1.get(position)) }
+                true
+            }
         }
     }
+
+
 
     override fun getItemCount(): Int {
         return items?.size ?: 0
@@ -67,6 +86,14 @@ class MessageListAdapter(
             MessageDetailEnum.RECEIVER
         }
         return messageViewType.ordinal
+    }
+
+    fun removeMessage(message: MessageModel) {
+        val position = items?.indexOf(message)
+        if (position != null && position != -1) {
+            items?.removeAt(position)
+            notifyItemRemoved(position)
+        }
     }
 
 }

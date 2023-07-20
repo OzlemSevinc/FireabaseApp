@@ -16,6 +16,11 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+
+interface MessageDeleteListener {
+    fun onMessageDeletedSuccessfully(message: MessageModel)
+    fun onMessageDeletionFailed(message: MessageModel, error: Exception)
+}
 class GroupChatViewModel(application: Application) : AndroidViewModel(application) {
     private val context = getApplication<Application>()
 
@@ -24,6 +29,7 @@ class GroupChatViewModel(application: Application) : AndroidViewModel(applicatio
     private var messageList: kotlin.collections.ArrayList<MessageModel>? = arrayListOf()
 
     private var userModel: UserModel? = null
+
 
     init {
         FirebaseHelper.getCurrentUserModel {
@@ -34,7 +40,7 @@ class GroupChatViewModel(application: Application) : AndroidViewModel(applicatio
     fun sendMessage(message: String?, requestListener: RequestListener) {
         val key = databaseReference.child("GroupChats").push().key
         val messageModel =
-            MessageModel(userModel?.name, userModel?.userId, message, getCurrentTime())
+            MessageModel(userModel?.name, userModel?.userId, message, getCurrentTime(),key)
         key?.let { chatKey ->
             databaseReference.child("GroupChats").child(chatKey).setValue(messageModel)
                 .addOnCompleteListener { task ->
@@ -81,4 +87,15 @@ class GroupChatViewModel(application: Application) : AndroidViewModel(applicatio
     fun getUserId(): String? {
         return userModel?.userId
     }
+
+    fun deleteMessage(messageId:String,message: MessageModel, messageDeleteListener: MessageDeleteListener){
+
+        databaseReference.child("GroupChats").child(messageId).removeValue()
+            .addOnSuccessListener {
+                messageDeleteListener.onMessageDeletedSuccessfully(message)
+            }
+            .addOnFailureListener { e->
+                messageDeleteListener.onMessageDeletionFailed(message, e)
+    }
+}
 }
